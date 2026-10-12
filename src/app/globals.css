@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #050505;
+  --color-surface: #0B0B0D;
+  --color-surface-elevated: #111111;
+  --color-surface-strong: #18181B;
+  
+  --color-border: #252529;
+  --color-border-strong: #333338;
+  
+  --color-text-primary: #F5F5F3;
+  --color-text-secondary: #B4B4B0;
+  --color-text-muted: #737377;
+  
+  --color-platinum: #D9D9D6;
+  
+  --color-crimson: #D9162B;
+  --color-crimson-hover: #EF233C;
+  --color-crimson-dark: #5E0912;
+  
+  --color-success: #32D583;
+  --color-warning: #F5B942;
+  --color-error: #FF4D5A;
+
+  --font-sans: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-plus-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  
+  --animate-pulse-slow: pulse-slow 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-marquee: marquee 40s linear infinite;
+  
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 0.05; transform: scale(1); }
+    50% { opacity: 0.15; transform: scale(1.05); }
+  }
+
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+}
+
+@layer base {
+  :root {
+    --background: var(--color-background);
+    --foreground: var(--color-text-primary);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer components {
+  .premium-gradient {
+    background: linear-gradient(180deg, rgba(5,5,5,0) 0%, rgba(5,5,5,0.8) 70%, rgba(5,5,5,1) 100%);
+  }
+  
+  .glass-panel {
+    background: rgba(11, 11, 13, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--color-border);
+  }
+
+  .premium-card-hover {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  
+  .premium-card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+    border-color: var(--color-border-strong);
+  }
+
+  /* Custom Scrollbar for a premium feel */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+  
+  /* Hide scrollbar for horizontal rails but allow scrolling */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

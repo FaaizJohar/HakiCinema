@@ -1,0 +1,325 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Authentication & User Models
+// -----------------------------------------------------------------------------
+
+model Account {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String    // Hashed password
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  // Relationships
+  profiles  Profile[]
+  sessions  Session[]
+  adminRole AdminRole?
+
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  accountId    String
+  sessionToken String   @unique
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Profile {
+  id                 String   @id @default(uuid())
+  accountId          String
+  name               String
+  avatar             String?
+  languagePreference String   @default("en")
+  isKidsProfile      Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  account            Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  // Relationships
+  watchHistory       WatchHistory[]
+  watchProgress      WatchProgress[]
+  myList             MyList[]
+  notifications      Notification[]
+
+  @@map("profiles")
+}
+
+// -----------------------------------------------------------------------------
+// Content Models
+// -----------------------------------------------------------------------------
+
+enum AnimeStatus {
+  ONGOING
+  COMPLETED
+  UPCOMING
+  HIATUS
+  CANCELLED
+}
+
+enum PublishState {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Anime {
+  id               String       @id @default(uuid())
+  title            String
+  alternativeTitle String?
+  slug             String       @unique
+  description      String       @db.Text
+  shortDescription String?
+  posterUrl        String?
+  bannerUrl        String?
+  year             Int?
+  releaseDate      DateTime?
+  status           AnimeStatus  @default(ONGOING)
+  publishState     PublishState @default(DRAFT)
+  rating           Float?
+  ratingCount      Int          @default(0)
+  contentRating    String?      // e.g., PG-13, R
+  type             String       @default("TV") // TV, Movie, OVA, etc.
+  studio           String?
+  languages        String[]
+  tags             String[]
+  isFeatured       Boolean      @default(false)
+  
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  // Relationships
+  genres           AnimeGenre[]
+  episodes         Episode[]
+  myListEntries    MyList[]
+  watchHistory     WatchHistory[]
+  watchProgress    WatchProgress[]
+
+  @@index([slug])
+  @@index([publishState])
+  @@map("anime")
+}
+
+model Genre {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  slug        String       @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relationships
+  anime       AnimeGenre[]
+
+  @@map("genres")
+}
+
+model AnimeGenre {
+  animeId   String
+  genreId   String
+  createdAt DateTime @default(now())
+
+  anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  genre     Genre    @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([animeId, genreId])
+  @@map("anime_genres")
+}
+
+model Episode {
+  id            String       @id @default(uuid())
+  animeId       String
+  episodeNumber Float        // Use Float to support 1.5, etc.
+  displayNumber String?      // e.g., "12 Special"
+  title         String
+  description   String?      @db.Text
+  thumbnail     String?
+  duration      Int?         // in seconds
+  releaseDate   DateTime?
+  seasonNumber  Int          @default(1)
+  publishState  PublishState @default(DRAFT)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  anime         Anime        @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  providers     StreamingProvider[]
+  watchHistory  WatchHistory[]
+  watchProgress WatchProgress[]
+
+  @@index([animeId])
+  @@index([publishState])
+  @@map("episodes")
+}
+
+enum ProviderType {
+  EMBED
+  HLS
+  DASH
+  MP4
+  EXTERNAL
+  CUSTOM
+}
+
+model StreamingProvider {
+  id          String       @id @default(uuid())
+  episodeId   String
+  name        String       // e.g., "Server A"
+  type        ProviderType
+  url         String
+  priority    Int          @default(0) // Higher = preferred
+  isActive    Boolean      @default(true)
+  metadata    Json?        // Quality, language, etc.
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  episode     Episode      @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@index([episodeId])
+  @@map("streaming_providers")
+}
+
+// -----------------------------------------------------------------------------
+// User Data Models
+// -----------------------------------------------------------------------------
+
+model WatchProgress {
+  id            String   @id @default(uuid())
+  profileId     String
+  animeId       String
+  episodeId     String
+  currentTime   Int      // in seconds
+  duration      Int      // in seconds
+  percentage    Float
+  isCompleted   Boolean  @default(false)
+  lastWatchedAt DateTime @default(now())
+
+  profile       Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  anime         Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  episode       Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, animeId])
+  @@index([profileId])
+  @@map("watch_progress")
+}
+
+model WatchHistory {
+  id            String   @id @default(uuid())
+  profileId     String
+  animeId       String
+  episodeId     String
+  watchedAt     DateTime @default(now())
+
+  profile       Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  anime         Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  episode       Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("watch_history")
+}
+
+model MyList {
+  id        String   @id @default(uuid())
+  profileId String
+  animeId   String
+  createdAt DateTime @default(now())
+
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, animeId])
+  @@index([profileId])
+  @@map("my_list")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  profileId   String
+  title       String
+  message     String   @db.Text
+  type        String   // "NEW_EPISODE", "SYSTEM", etc.
+  isRead      Boolean  @default(false)
+  linkUrl     String?
+  createdAt   DateTime @default(now())
+
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("notifications")
+}
+
+// -----------------------------------------------------------------------------
+// Admin & RBAC Models
+// -----------------------------------------------------------------------------
+
+enum RoleType {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  MODERATOR
+  ANALYST
+}
+
+model AdminRole {
+  id        String   @id @default(uuid())
+  accountId String   @unique
+  role      RoleType
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+
+  @@map("admin_roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  action      String   @unique // e.g., "anime.create", "anime.delete"
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role         AdminRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String   // Account ID of the admin
+  action      String
+  resource    String
+  resourceId  String?
+  metadata    Json?
+  timestamp   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([resource])
+  @@map("audit_logs")
+}
